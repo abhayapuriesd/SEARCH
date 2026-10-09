@@ -49,7 +49,8 @@ const B64="H4sIAEB9yGoC/7S965IjR3Im+iqw+XOaZmQx4x6hf4kGupCFAlDChb1F2doxrkl2Zo5WM
 let DATA=[],NAMES=[],METERS=[],mode='mobile';
 const LIMIT=100;
 const q=document.getElementById('q'),out=document.getElementById('out'),st=document.getElementById('status'),btn=document.getElementById('btn');
-const HINT={mobile:'Enter 10-digit mobile number',meter:'Enter meter number (e.g. AS092794)',name:'Enter consumer name (e.g. sarbeswar das)'};
+const HINT={mobile:'Type mobile number (min 3 digits)',meter:'Type meter number (min 2 characters)',name:'Type consumer name (min 2 characters)'};
+let timer=null;
 
 async function load(){
   try{
@@ -89,30 +90,33 @@ function show(idx,total){
     </div>`}).join('');
 }
 function search(){
-  out.innerHTML='';
   const raw=q.value.trim();
   const idx=[];
+  if(!raw){out.innerHTML='';st.textContent=HINT[mode]+'.';return;}
   if(mode==='mobile'){
     let v=raw.replace(/\D/g,'');
     if(v.length>10&&v.startsWith('91'))v=v.slice(2);
-    if(v.length<10){st.textContent='Please enter a full 10-digit mobile number.';return;}
-    for(let i=0;i<DATA.length;i++){const p=DATA[i][0];if(p&&p.endsWith(v))idx.push(i);}
+    if(v.length<3){out.innerHTML='';st.textContent='Keep typing... (min 3 digits)';return;}
+    for(let i=0;i<DATA.length;i++){const p=DATA[i][0];if(p&&p.includes(v))idx.push(i);}
+    idx.sort((a,b)=>(DATA[a][0].startsWith(v)?0:1)-(DATA[b][0].startsWith(v)?0:1));
   }else if(mode==='meter'){
     const v=raw.toLowerCase().replace(/\s+/g,'');
-    if(v.length<3){st.textContent='Please enter at least 3 characters of the meter number.';return;}
+    if(v.length<2){out.innerHTML='';st.textContent='Keep typing... (min 2 characters)';return;}
     for(let i=0;i<DATA.length;i++){if(METERS[i].includes(v))idx.push(i);}
-    idx.sort((a,b)=>(METERS[a]===v?0:1)-(METERS[b]===v?0:1));
+    idx.sort((a,b)=>(METERS[a]===v?0:METERS[a].startsWith(v)?1:2)-(METERS[b]===v?0:METERS[b].startsWith(v)?1:2));
   }else{
     const words=raw.toLowerCase().split(/\s+/).filter(Boolean);
-    if(!words.length||raw.replace(/\s/g,'').length<3){st.textContent='Please enter at least 3 characters of the name.';return;}
+    if(raw.replace(/\s/g,'').length<2){out.innerHTML='';st.textContent='Keep typing... (min 2 characters)';return;}
     for(let i=0;i<DATA.length;i++){const n=NAMES[i];if(words.every(w=>n.includes(w)))idx.push(i);}
+    const f=words[0];
+    idx.sort((a,b)=>(NAMES[a].startsWith(f)?0:1)-(NAMES[b].startsWith(f)?0:1));
   }
   show(idx,idx.length);
 }
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>setMode(t.dataset.mode));
 btn.onclick=search;
 q.addEventListener('keydown',e=>{if(e.key==='Enter')search()});
-q.addEventListener('input',()=>{if(mode==='mobile'&&q.value.replace(/\D/g,'').length===10)search()});
+q.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(search,150);});
 load();
 </script>
 </body>
